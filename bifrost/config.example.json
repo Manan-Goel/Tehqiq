@@ -1,0 +1,17 @@
+{
+  "$schema": "https://www.getbifrost.ai/schema",
+  "providers": {
+    "openrouter": {
+      "keys": [{
+        "name": "openrouter-key",
+        "value": "env.OPENROUTER_API_KEY",
+        "models": ["*"],
+        "weight": 1.0
+      }],
+      "network_config": {
+        "default_request_timeout_in_seconds": 45,
+        "max_retries": 1
+      }
+    }
+  }
+}
