@@ -10,6 +10,9 @@ from app import main
 
 class PipelineTests(unittest.TestCase):
     def setUp(self):
+        self.enterContext(patch.dict(os.environ,{'TEHQIQ_FREE_ONLY':'0'}))
+        self.enterContext(patch.object(main,'plan_research',return_value={'queries':['launch','leadership'],'background_days':30,'seconds':90,'reason':'test'}))
+        main.METER.set(None)
         self.start = datetime(2026, 10, 16, tzinfo=timezone.utc)
         self.end = datetime(2026, 11, 15, tzinfo=timezone.utc)
         self.sources = [{'id': 'S1', 'content': 'Acme announced a limited beta on November 14.'}]
@@ -42,7 +45,7 @@ class PipelineTests(unittest.TestCase):
                         'failed_results': [{'url': 'https://example.com/one', 'error': 'Unavailable'}]}
             if 'strict evidence auditor' in body['messages'][0]['content']:
                 return {'choices': [{'message': {'content': '{"decisions":[{"index":0,"supported":true,"reason":"Source supports the claim"}]}'}}]}
-            return {'choices': [{'message': {'content': '{"claims":[{"statement":"Acme announced a beta","source_id":"S2","quote":"Acme announced a limited beta","event_date":"2026-11-14","question":"When will it expand?","implication":"May need support"}]}'}}]}
+            return {'choices': [{'message': {'content': '{"claims":[{"statement":"Acme announced a beta","source_id":"S2","quote":"Acme announced a limited beta","date_quote":"November 14","event_date":"2026-11-14","question":"When will it expand?","implication":"May need support"}]}'}}]}
 
         saved = []
         data = {'entity_name': 'Acme', 'entity_type': 'company',
@@ -90,7 +93,7 @@ class PipelineTests(unittest.TestCase):
                                      'raw_content': 'Acme announced a limited beta on November 14.'}]}
             if 'strict evidence auditor' in body['messages'][0]['content']:
                 return {'choices': [{'message': {'content': '{"decisions":[{"index":0,"supported":false,"reason":"Statement overclaims"}]}'}}]}
-            return {'choices': [{'message': {'content': '{"claims":[{"statement":"Acme has 1 million users","source_id":"S1","quote":"Acme announced a limited beta","event_date":"2026-11-14","question":"How many users?","implication":"Could grow"}]}'}}]}
+            return {'choices': [{'message': {'content': '{"claims":[{"statement":"Acme has 1 million users","source_id":"S1","quote":"Acme announced a limited beta","date_quote":"November 14","event_date":"2026-11-14","question":"How many users?","implication":"Could grow"}]}'}}]}
         saved = []
         data = {'entity_name': 'Acme', 'entity_type': 'company',
                 'meeting_at': '2026-11-16T10:00:00+05:30', 'timezone': 'Asia/Kolkata'}

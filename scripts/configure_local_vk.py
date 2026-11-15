@@ -26,12 +26,16 @@ config['governance'] = {'virtual_keys': [{
     'expires_at': (datetime.now(timezone.utc) + timedelta(days=1)).isoformat(),
     'provider_configs': [{
         'provider': 'openrouter',
-        'allowed_models': ['openrouter/free'],
+        'allowed_models': ['openrouter/free','inclusionai/ling-3.2-flash:free'],
         'key_ids': [provider_key_id],
     }],
 }]}
 lines = [line for line in env_path.read_text(encoding='utf-8-sig').splitlines() if not line.startswith('BIFROST_API_KEY=')]
 lines.append('BIFROST_API_KEY=' + secret)
+role_models={'BIFROST_PLANNER_MODEL':'openrouter/inclusionai/ling-3.2-flash:free','BIFROST_DRAFT_MODEL':'openrouter/openrouter/free','BIFROST_AUDIT_MODEL':'openrouter/openrouter/free','BIFROST_QA_MODEL':'openrouter/inclusionai/ling-3.2-flash:free'}
+for name,value in role_models.items():
+    lines=[line for line in lines if not line.startswith(name+'=')]
+    lines.append(name+'='+value)
 env_path.write_text('\n'.join(lines) + '\n', encoding='utf-8')
 config_path.write_text(json.dumps(config, indent=2) + '\n', encoding='utf-8')
-print('Configured one-day local key for the configured OpenRouter key and openrouter/free only.')
+print('Configured one-day local key restricted to two free model routes and assigned role models.')

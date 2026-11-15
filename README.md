@@ -17,6 +17,8 @@ The application never calls OpenRouter directly. The OpenRouter key belongs in B
 
 ## Validation
 
+The current workflow adds a research planner, optional dated background context, role model settings, bounded model context/calls, and evidence-grounded Q&A. See [agent workflow](AGENT_WORKFLOW.md) for limits and configuration. Run `python -m scripts.smoke_agents` for live role checks. The latest planner smoke received HTTP 429 from the model route, so role-specific live success has not been established. The offline suite now contains 16 tests.
+
 Run `python -m unittest discover -s tests -v` and `node --check app/static/app.js`. The offline suite covers date boundaries, partial extraction, fabricated excerpts, semantic audit rejection, Bifrost request construction, malformed JSON, and objective reframing. Tavily Search/Extract and a Bifrost to OpenRouter free model call were also verified with live credentials on 15 November 2026. One complete live company briefing finished; later stricter runs encountered free-route timeouts, so demo timing is not guaranteed.
 
 The `?preview=1` URL displays a clearly labeled synthetic example for layout and print rehearsal. It is not live research. Browser Print / Save as PDF is the export path; one synthetic A4 report was visually checked as one page.
