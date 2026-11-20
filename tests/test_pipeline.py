@@ -45,7 +45,11 @@ class PipelineTests(unittest.TestCase):
                         'failed_results': [{'url': 'https://example.com/one', 'error': 'Unavailable'}]}
             if 'strict evidence auditor' in body['messages'][0]['content']:
                 return {'choices': [{'message': {'content': '{"decisions":[{"index":0,"supported":true,"reason":"Source supports the claim"}]}'}}]}
-            return {'choices': [{'message': {'content': '{"claims":[{"statement":"Acme announced a beta","source_id":"S2","quote":"Acme announced a limited beta","date_quote":"November 14","event_date":"2026-11-14","question":"When will it expand?","implication":"May need support"}]}'}}]}
+            if 'Repair rejected research claims once' in body['messages'][0]['content']:
+                quote = 'Acme announced a limited beta'
+            else:
+                quote = 'Acme announced beta'
+            return {'choices': [{'message': {'content': json.dumps({'claims':[{'statement':'Acme announced a beta','source_id':'S2','quote':quote,'date_quote':'November 14','event_date':'2026-11-14','question':'When will it expand?','implication':'May need support'}]})}}]}
 
         saved = []
         data = {'entity_name': 'Acme', 'entity_type': 'company',
@@ -69,13 +73,50 @@ class PipelineTests(unittest.TestCase):
                     'extra_fields': {'routing_info': {'provider': 'backup'}},
                     'usage': {'total_tokens': 12}}
         with patch.dict(os.environ, {'BIFROST_MODEL': 'primary/model',
-                                      'BIFROST_FALLBACK_MODEL': 'backup/model'}, clear=False), \
+                                      'BIFROST_FALLBACK_MODEL': 'general/model',
+                                      'BIFROST_DRAFT_FALLBACK_MODEL': 'backup/model'}, clear=False), \
              patch.object(main, 'post', side_effect=fake_post):
             result, route, usage = main.model_json([{'role': 'user', 'content': 'test'}])
         self.assertEqual(seen[0][1]['fallbacks'], ['backup/model'])
         self.assertEqual(route['provider'], 'backup')
         self.assertEqual(usage['total_tokens'], 12)
         self.assertEqual(result, {'claims': []})
+
+    def test_empty_model_output_uses_role_fallback(self):
+        seen = []
+        responses = [
+            {'choices': [{'message': {'content': ''}}]},
+            {'choices': [{'message': {'content': '{"ok":true}'}}], 'usage': {'total_tokens': 5}},
+        ]
+        def fake_post(url, body, key):
+            seen.append(body)
+            return responses.pop(0)
+        with patch.dict(os.environ, {
+            'BIFROST_DRAFT_MODEL': 'openrouter/google/gemma-4-26b-a4b-it:free',
+            'BIFROST_DRAFT_FALLBACK_MODEL': 'openrouter/inclusionai/ling-3.2-flash:free',
+            'TEHQIQ_FREE_ONLY': '1',
+        }, clear=False), patch.object(main, 'post', side_effect=fake_post):
+            result, _, _ = main.model_json([{'role': 'user', 'content': 'test'}])
+        self.assertEqual(seen[1]['model'], 'openrouter/inclusionai/ling-3.2-flash:free')
+        self.assertEqual(seen[1]['reasoning'], {'effort': 'none'})
+        self.assertEqual(result, {'ok': True})
+
+    def test_openrouter_rate_limit_uses_gemini_fallback(self):
+        seen = []
+        def fake_post(url, body, key):
+            seen.append(body)
+            if len(seen) == 1:
+                raise RuntimeError('Free model provider rate limit reached.')
+            return {'choices': [{'message': {'content': '{"ok":true}'}}]}
+        with patch.dict(os.environ, {
+            'BIFROST_DRAFT_MODEL': 'openrouter/google/gemma-4-26b-a4b-it:free',
+            'BIFROST_DRAFT_FALLBACK_MODEL': 'openrouter/inclusionai/ling-3.2-flash:free',
+            'BIFROST_GEMINI_FALLBACK_MODEL': 'gemini/gemini-3.8-flash',
+            'TEHQIQ_FREE_ONLY': '1',
+        }, clear=False), patch.object(main, 'post', side_effect=fake_post):
+            result, _, _ = main.model_json([{'role': 'user', 'content': 'test'}])
+        self.assertEqual(seen[1]['model'], 'gemini/gemini-3.8-flash')
+        self.assertEqual(result, {'ok': True})
 
     def test_malformed_model_json_raises(self):
         with patch.dict(os.environ, {'BIFROST_MODEL': 'primary/model'}, clear=False), \

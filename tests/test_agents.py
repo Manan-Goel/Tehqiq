@@ -18,6 +18,15 @@ class AgentTests(unittest.TestCase):
             with self.assertRaises(ValueError): main.model_json([])
         network.assert_not_called()
 
+    def test_gemini_blocked_until_free_tier_is_confirmed(self):
+        with patch.dict(os.environ,{
+            'BIFROST_GEMINI_FALLBACK_MODEL':'',
+            'TEHQIQ_GEMINI_FREE_TIER_CONFIRMED':'0',
+            'TEHQIQ_FREE_ONLY':'1',
+        }), patch.object(main,'post') as network:
+            with self.assertRaises(ValueError): main.model_json([],model='gemini/gemini-3.8-flash')
+        network.assert_not_called()
+
     def test_qa_unknown_citation_cannot_escape(self):
         report={'entity':'Acme','claims':[{'source_id':'S1','quote':'Beta'}],'sources':[{'id':'S1'}]}
         with patch.object(main,'agent',return_value=({'answer':'Invented answer','source_ids':['S99']},{},{})):
